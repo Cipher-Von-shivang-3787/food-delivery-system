@@ -1,6 +1,7 @@
 package ui;
 
 import dao.MenuDAO;
+import dao.OrderDAO;
 import model.Cart;
 import model.MenuItem;
 import model.User;
@@ -16,6 +17,7 @@ public class MenuFrame extends JFrame {
     private final User user;
     private final MenuDAO menuDAO = new MenuDAO();
     private final Cart cart = new Cart();
+    private final OrderDAO orderDAO = new OrderDAO();
 
     private final DefaultTableModel menuModel;
     private final JTable menuTable;
@@ -43,8 +45,11 @@ public class MenuFrame extends JFrame {
         top.add(logoutBtn, BorderLayout.EAST);
 
         // ---- Left: menu table + Add button ----
-        menuModel = new DefaultTableModel(new String[]{"ID", "Restaurant", "Item", "Price (Rs.)"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+        menuModel = new DefaultTableModel(new String[] { "ID", "Restaurant", "Item", "Price (Rs.)" }, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
         menuTable = new JTable(menuModel);
         menuTable.setRowHeight(26);
@@ -60,8 +65,11 @@ public class MenuFrame extends JFrame {
         left.add(menuButtons, BorderLayout.SOUTH);
 
         // ---- Right: cart table + total + buttons ----
-        cartModel = new DefaultTableModel(new String[]{"Item", "Qty", "Subtotal"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+        cartModel = new DefaultTableModel(new String[] { "Item", "Qty", "Subtotal" }, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
         cartTable = new JTable(cartModel);
         cartTable.setRowHeight(26);
@@ -106,9 +114,23 @@ public class MenuFrame extends JFrame {
                         "Nothing to order", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            // Order placement is the next step
-            JOptionPane.showMessageDialog(this,
-                    String.format("Order placement comes next. Total: Rs. %.2f", cart.getTotal()));
+            double total = cart.getTotal();
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    String.format("Place this order for Rs. %.2f?", total),
+                    "Confirm order", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION)
+                return;
+
+            int orderId = orderDAO.placeOrder(user, cart);
+            if (orderId == -1) {
+                JOptionPane.showMessageDialog(this, "Could not place the order. Please try again.",
+                        "Order failed", JOptionPane.ERROR_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "Order #" + orderId + " placed! Total: Rs. " + String.format("%.2f", total));
+                cart.clear();
+                refreshCart();
+            }
         });
         logoutBtn.addActionListener(e -> {
             dispose();
@@ -122,8 +144,8 @@ public class MenuFrame extends JFrame {
         menuModel.setRowCount(0);
         menuItems = menuDAO.getAllItems();
         for (MenuItem item : menuItems) {
-            menuModel.addRow(new Object[]{
-                item.getItemId(), item.getRestaurantName(), item.getName(), item.getPrice()
+            menuModel.addRow(new Object[] {
+                    item.getItemId(), item.getRestaurantName(), item.getName(), item.getPrice()
             });
         }
     }
@@ -158,8 +180,8 @@ public class MenuFrame extends JFrame {
             MenuItem item = e.getKey();
             int qty = e.getValue();
             cartRows.add(item);
-            cartModel.addRow(new Object[]{
-                item.getName(), qty, String.format("%.2f", item.getPrice() * qty)
+            cartModel.addRow(new Object[] {
+                    item.getName(), qty, String.format("%.2f", item.getPrice() * qty)
             });
         }
         totalLabel.setText(String.format("Total: Rs. %.2f", cart.getTotal()));
