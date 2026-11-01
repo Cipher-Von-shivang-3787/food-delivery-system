@@ -60,7 +60,13 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        JOptionPane.showMessageDialog(this,
-                "Welcome " + user.getName() + " (" + user.getRole() + ")");
+        if (user.getRole().equals("CUSTOMER")) {
+            dispose();
+            new MenuFrame(user).setVisible(true);
+        } else {
+            // Admin and delivery screens come in later steps
+            JOptionPane.showMessageDialog(this,
+                    "Welcome " + user.getName() + " (" + user.getRole() + ")");
+        }
     }
 }
