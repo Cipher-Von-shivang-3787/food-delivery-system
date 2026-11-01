@@ -60,13 +60,19 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        if (user.getRole().equals("CUSTOMER")) {
-            dispose();
-            new MenuFrame(user).setVisible(true);
-        } else {
-            // Admin and delivery screens come in later steps
-            JOptionPane.showMessageDialog(this,
-                    "Welcome " + user.getName() + " (" + user.getRole() + ")");
+        dispose();
+        switch (user.getRole()) {
+            case "CUSTOMER":
+                new MenuFrame(user).setVisible(true);
+                break;
+            case "ADMIN":
+                new AdminFrame(user).setVisible(true);
+                break;
+            case "DELIVERY":
+                new DeliveryFrame(user).setVisible(true);
+                break;
+            default:
+                new LoginFrame().setVisible(true);
         }
     }
 }
