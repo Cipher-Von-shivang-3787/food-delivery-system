@@ -5,7 +5,6 @@ import dao.OrderDAO;
 import model.Cart;
 import model.MenuItem;
 import model.User;
-
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -39,11 +38,14 @@ public class MenuFrame extends JFrame {
         JLabel welcome = new JLabel("Welcome, " + user.getName());
         welcome.setFont(new Font("SansSerif", Font.BOLD, 16));
         JButton logoutBtn = new JButton("Logout");
+        JButton myOrdersBtn = new JButton("My Orders");
+        JPanel topButtons = new JPanel(new FlowLayout());
+        topButtons.add(myOrdersBtn);
+        topButtons.add(logoutBtn);
         JPanel top = new JPanel(new BorderLayout());
         top.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
         top.add(welcome, BorderLayout.WEST);
-        top.add(logoutBtn, BorderLayout.EAST);
-
+        top.add(topButtons, BorderLayout.EAST);
         // ---- Left: menu table + Add button ----
         menuModel = new DefaultTableModel(new String[] { "ID", "Restaurant", "Item", "Price (Rs.)" }, 0) {
             @Override
@@ -108,6 +110,7 @@ public class MenuFrame extends JFrame {
             cart.clear();
             refreshCart();
         });
+        myOrdersBtn.addActionListener(e -> new MyOrdersDialog(this, user).setVisible(true));
         orderBtn.addActionListener(e -> {
             if (cart.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Your cart is empty.",
