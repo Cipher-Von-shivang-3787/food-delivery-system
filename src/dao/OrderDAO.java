@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.sql.*;
 import java.util.Map;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class OrderDAO {
 
@@ -171,5 +173,29 @@ public class OrderDAO {
             e.printStackTrace();
         }
         return rows;
+    }
+        // PLACED orders, oldest first. Each row: {orderId, customer, address, total, time}
+    public Queue<Object[]> getPendingOrders() {
+        Queue<Object[]> queue = new LinkedList<>();
+        String sql = "SELECT o.order_id, u.name, u.address, o.total, o.order_time "
+                   + "FROM orders o JOIN users u ON o.user_id = u.user_id "
+                   + "WHERE o.status = 'PLACED' ORDER BY o.order_id ASC";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String address = rs.getString("address");
+                queue.offer(new Object[]{
+                    rs.getInt("order_id"),
+                    rs.getString("name"),
+                    address == null ? "-" : address,
+                    String.format("%.2f", rs.getDouble("total")),
+                    rs.getTimestamp("order_time").toString()
+                });
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return queue;
     }
 }

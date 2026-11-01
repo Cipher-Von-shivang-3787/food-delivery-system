@@ -3,7 +3,7 @@ package ui;
 import dao.MenuDAO;
 import dao.OrderDAO;
 import model.User;
-
+import java.util.Queue;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -21,6 +21,8 @@ public class AdminFrame extends JFrame {
     private final JTable orderTable;
     private final JComboBox<String> riderBox = new JComboBox<>();
     private final List<Integer> riderIds = new ArrayList<>();
+        private final DefaultTableModel pendingModel;
+    private final JComboBox<String> pendingRiderBox = new JComboBox<>();
 
     private final JComboBox<String> restaurantBox = new JComboBox<>();
     private final List<Integer> restaurantIds = new ArrayList<>(); // same order as the combo box
@@ -98,9 +100,31 @@ public class AdminFrame extends JFrame {
         ordersTab.add(new JScrollPane(orderTable), BorderLayout.CENTER);
         ordersTab.add(assignPanel, BorderLayout.SOUTH);
 
+                // ---- Tab 3: Pending Queue (FIFO) ----
+        pendingModel = new DefaultTableModel(
+                new String[]{"Queue #", "Order #", "Customer", "Address", "Total (Rs.)", "Placed at"}, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable pendingTable = new JTable(pendingModel);
+        pendingTable.setRowHeight(26);
+
+        for (int i = 0; i < riderBox.getItemCount(); i++) pendingRiderBox.addItem(riderBox.getItemAt(i));
+        JButton nextBtn = new JButton("Assign Next in Queue");
+        JPanel nextPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        nextPanel.setBorder(BorderFactory.createTitledBorder("Oldest order is served first"));
+        nextPanel.add(new JLabel("Rider:"));
+        nextPanel.add(pendingRiderBox);
+        nextPanel.add(nextBtn);
+        nextBtn.addActionListener(e -> assignNext());
+
+        JPanel pendingTab = new JPanel(new BorderLayout());
+        pendingTab.add(new JScrollPane(pendingTable), BorderLayout.CENTER);
+        pendingTab.add(nextPanel, BorderLayout.SOUTH);
+
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Manage Menu", menuTab);
         tabs.addTab("All Orders", ordersTab);
+        tabs.addTab("Pending Queue", pendingTab);
 
         add(top, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
@@ -121,6 +145,7 @@ public class AdminFrame extends JFrame {
 
         loadMenu();
         showOrders(orderDAO.getAllOrders());
+                showPending(orderDAO.getPendingOrders());
         startOrderRefresher();
     }
 
@@ -153,13 +178,17 @@ public class AdminFrame extends JFrame {
     }
 
     // Background thread: refreshes the orders list every 3 seconds
-    private void startOrderRefresher() {
+        private void startOrderRefresher() {
         Thread t = new Thread(() -> {
             try {
                 while (!Thread.currentThread().isInterrupted()) {
                     Thread.sleep(3000);
                     List<Object[]> rows = orderDAO.getAllOrders();
-                    SwingUtilities.invokeLater(() -> showOrders(rows));
+                    Queue<Object[]> pending = orderDAO.getPendingOrders();
+                    SwingUtilities.invokeLater(() -> {
+                        showOrders(rows);
+                        showPending(pending);
+                    });
                 }
             } catch (InterruptedException e) {
                 // stop quietly
@@ -167,6 +196,40 @@ public class AdminFrame extends JFrame {
         });
         t.setDaemon(true);
         t.start();
+    }
+
+    private void showPending(Queue<Object[]> queue) {
+        pendingModel.setRowCount(0);
+        int position = 1;
+        for (Object[] o : queue) {
+            pendingModel.addRow(new Object[]{position++, o[0], o[1], o[2], o[3], o[4]});
+        }
+    }
+
+    // poll() removes and returns the head of the queue (the oldest waiting order)
+    private void assignNext() {
+        if (riderIds.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No delivery person exists.",
+                    "Cannot assign", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        Queue<Object[]> queue = orderDAO.getPendingOrders();
+        Object[] next = queue.poll();
+        if (next == null) {
+            JOptionPane.showMessageDialog(this, "No pending orders.",
+                    "Queue empty", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int orderId = (int) next[0];
+        int riderId = riderIds.get(pendingRiderBox.getSelectedIndex());
+        if (orderDAO.assignOrder(orderId, riderId)) {
+            showOrders(orderDAO.getAllOrders());
+            showPending(orderDAO.getPendingOrders());
+            JOptionPane.showMessageDialog(this, "Order #" + orderId + " assigned.");
+        } else {
+            JOptionPane.showMessageDialog(this, "Could not assign the order.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
         private void loadRiders() {
         for (Map.Entry<Integer, String> e : orderDAO.getDeliveryPeople().entrySet()) {
