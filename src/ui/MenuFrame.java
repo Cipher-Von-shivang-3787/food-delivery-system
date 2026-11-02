@@ -29,7 +29,7 @@ public class MenuFrame extends JFrame {
 
     public MenuFrame(User user) {
         this.user = user;
-        setTitle("Food Delivery - Menu");
+        setTitle("Food Delivery - Menu (" + user.getName() + ")");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1000, 500);
         setLocationRelativeTo(null);
