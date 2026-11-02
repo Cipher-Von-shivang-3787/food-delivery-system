@@ -2,3 +2,8 @@ bin/
 out/
 *.class
 db.properties
+applet-demo/*.jar
+applet-demo/ui/
+applet-demo/model/
+applet-demo/dao/
+applet-demo/util/
